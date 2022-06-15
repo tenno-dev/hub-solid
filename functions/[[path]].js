@@ -2,52 +2,52 @@ var manifest = {
 	"/about": [
 	{
 		type: "script",
-		href: "/assets/about.67d6d1f4.js"
+		href: "/assets/about.ed55fec1.js"
 	},
 	{
 		type: "script",
-		href: "/assets/entry-client.2bfab245.js"
+		href: "/assets/entry-client.437bccd8.js"
 	},
 	{
 		type: "script",
-		href: "/assets/Counter.9e59d33e.js"
+		href: "/assets/Counter.eb3ae92d.js"
 	}
 ],
 	"/": [
 	{
 		type: "script",
-		href: "/assets/index.e60f7edc.js"
+		href: "/assets/index.e3fa035b.js"
 	},
 	{
 		type: "script",
-		href: "/assets/entry-client.2bfab245.js"
+		href: "/assets/entry-client.437bccd8.js"
 	},
 	{
 		type: "script",
-		href: "/assets/Counter.9e59d33e.js"
+		href: "/assets/Counter.eb3ae92d.js"
 	}
 ],
 	"/[...404]": [
 	{
 		type: "script",
-		href: "/assets/_...404_.7cb97eeb.js"
+		href: "/assets/_...404_.c3a535c2.js"
 	},
 	{
 		type: "script",
-		href: "/assets/entry-client.2bfab245.js"
+		href: "/assets/entry-client.437bccd8.js"
 	}
 ],
 	"*": [
 	{
 		type: "script",
-		href: "/assets/entry-client.2bfab245.js"
+		href: "/assets/entry-client.437bccd8.js"
 	}
 ]
 };
 
 var assetManifest = {
 	"src/entry-client.jsx": {
-	file: "assets/entry-client.2bfab245.js",
+	file: "assets/entry-client.437bccd8.js",
 	src: "src/entry-client.jsx",
 	isEntry: true,
 	dynamicImports: [
@@ -60,31 +60,31 @@ var assetManifest = {
 	]
 },
 	"src/routes/about.jsx": {
-	file: "assets/about.67d6d1f4.js",
+	file: "assets/about.ed55fec1.js",
 	src: "src/routes/about.jsx",
 	isDynamicEntry: true,
 	imports: [
 		"src/entry-client.jsx",
-		"_Counter.9e59d33e.js"
+		"_Counter.eb3ae92d.js"
 	]
 },
-	"_Counter.9e59d33e.js": {
-	file: "assets/Counter.9e59d33e.js",
+	"_Counter.eb3ae92d.js": {
+	file: "assets/Counter.eb3ae92d.js",
 	imports: [
 		"src/entry-client.jsx"
 	]
 },
 	"src/routes/index.jsx": {
-	file: "assets/index.e60f7edc.js",
+	file: "assets/index.e3fa035b.js",
 	src: "src/routes/index.jsx",
 	isDynamicEntry: true,
 	imports: [
 		"src/entry-client.jsx",
-		"_Counter.9e59d33e.js"
+		"_Counter.eb3ae92d.js"
 	]
 },
 	"src/routes/[...404].jsx": {
-	file: "assets/_...404_.7cb97eeb.js",
+	file: "assets/_...404_.c3a535c2.js",
 	src: "src/routes/[...404].jsx",
 	isDynamicEntry: true,
 	imports: [
@@ -331,6 +331,99 @@ function ErrorBoundary$1(props) {
   return res;
 }
 const SuspenseContext = createContext();
+let resourceContext = null;
+function createResource(source, fetcher, options = {}) {
+  if (arguments.length === 2) {
+    if (typeof fetcher === "object") {
+      options = fetcher;
+      fetcher = source;
+      source = true;
+    }
+  } else if (arguments.length === 1) {
+    fetcher = source;
+    source = true;
+  }
+  const contexts = new Set();
+  const id = sharedConfig.context.id + sharedConfig.context.count++;
+  let resource = {};
+  let value = options.initialValue;
+  let p;
+  let error;
+  if (sharedConfig.context.async) {
+    resource = sharedConfig.context.resources[id] || (sharedConfig.context.resources[id] = {});
+    if (resource.ref) {
+      if (!resource.data && !resource.ref[0].loading && !resource.ref[0].error) resource.ref[1].refetch();
+      return resource.ref;
+    }
+  }
+  const read = () => {
+    if (error) throw error;
+    if (resourceContext && p) resourceContext.push(p);
+    const resolved = sharedConfig.context.async && "data" in sharedConfig.context.resources[id];
+    if (!resolved && read.loading) {
+      const ctx = useContext(SuspenseContext);
+      if (ctx) {
+        ctx.resources.set(id, read);
+        contexts.add(ctx);
+      }
+    }
+    return resolved ? sharedConfig.context.resources[id].data : value;
+  };
+  read.loading = false;
+  read.error = undefined;
+  Object.defineProperty(read, "latest", {
+    get() {
+      return read();
+    }
+  });
+  function load() {
+    const ctx = sharedConfig.context;
+    if (!ctx.async) return read.loading = !!(typeof source === "function" ? source() : source);
+    if (ctx.resources && id in ctx.resources && "data" in ctx.resources[id]) {
+      value = ctx.resources[id].data;
+      return;
+    }
+    resourceContext = [];
+    const lookup = typeof source === "function" ? source() : source;
+    if (resourceContext.length) {
+      p = Promise.all(resourceContext).then(() => fetcher(source(), {
+        value
+      }));
+    }
+    resourceContext = null;
+    if (!p) {
+      if (lookup == null || lookup === false) return;
+      p = fetcher(lookup, {
+        value
+      });
+    }
+    if (p != undefined && typeof p === "object" && "then" in p) {
+      read.loading = true;
+      if (ctx.writeResource) ctx.writeResource(id, p, undefined, options.deferStream);
+      return p.then(res => {
+        read.loading = false;
+        ctx.resources[id].data = res;
+        p = null;
+        notifySuspense(contexts);
+        return res;
+      }).catch(err => {
+        read.loading = false;
+        read.error = error = err;
+        p = null;
+        notifySuspense(contexts);
+      });
+    }
+    ctx.resources[id].data = p;
+    if (ctx.writeResource) ctx.writeResource(id, p);
+    p = null;
+    return ctx.resources[id].data;
+  }
+  load();
+  return resource.ref = [read, {
+    refetch: load,
+    mutate: v => value = v
+  }];
+}
 function lazy(fn) {
   let resolved;
   const p = fn();
@@ -2368,14 +2461,25 @@ var about = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   'default': About
 }, Symbol.toStringTag, { value: 'Module' }));
 
-const _tmpl$$1 = ["<main", " class=\"text-center mx-auto text-gray-700 p-4\"><h1 class=\"max-6-xs text-6xl text-sky-700 font-thin uppercase my-16\">Hello world!</h1><!--#-->", "<!--/--><p class=\"mt-8\">Visit <!--#-->", "<!--/--> to learn how to build Solid apps.</p><p class=\"my-4\"><span>Home</span> - <!--#-->", "<!--/--> </p></main>"];
+const _tmpl$$1 = ["<main", " class=\"text-center mx-auto text-gray-700 p-4\"><h1 class=\"max-6-xs text-6xl text-sky-700 font-thin uppercase my-16\">Hello world!</h1><!--#-->", "<!--/--><p class=\"mt-8\">Visit <!--#-->", "<!--/--> to learn how to build Solid apps.</p><span>", "</span><!--#-->", "<!--/--><p class=\"my-4\"><span>Home</span> - <!--#-->", "<!--/--> </p></main>"];
 function Home() {
+
+  const fetchUser = async id => (await fetch(`https://api.tenno.dev/${userId}`)).json();
+
+  const userId = 'pc';
+  const [data, {
+    mutate,
+    refetch
+  }] = createResource(userId, fetchUser);
+  setInterval(() => {
+    refetch();
+  }, 60000);
   return ssr(_tmpl$$1, ssrHydrationKey(), escape(createComponent(Counter, {})), escape(createComponent(Link, {
     href: "https://solidjs.com",
     target: "_blank",
     "class": "text-sky-600 hover:underline",
     children: "solidjs.com"
-  })), escape(createComponent(Link, {
+  })), data.loading && "Loading...", escape(JSON.stringify(data())), escape(createComponent(Link, {
     href: "/about",
     "class": "text-sky-600 hover:underline",
     children: "About Page"
