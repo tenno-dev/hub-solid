@@ -5,11 +5,11 @@ import { createResource } from "solid-js";
 
 export default function Home() {
   const [ws, setws] = createSignal();
-  const fetchUser = async (id) =>
-  (await fetch(`https://api.tenno.dev/${userId}`)).json();
+  const fetchUser = async (platform) =>
+    (await fetch(`https://api.tenno.dev/${platform}`)).json();
+  const [platform, setplatform] = createSignal('pc');
 
-    const userId = 'pc'
-  const [data, { mutate, refetch }] = createResource(userId,fetchUser);
+  const [data, { mutate, refetch }] = createResource(platform, fetchUser);
 
   setInterval(() => {
     refetch()
@@ -19,7 +19,6 @@ export default function Home() {
       <h1 class="max-6-xs text-6xl text-sky-700 font-thin uppercase my-16">
         Hello world!
       </h1>
-      <Counter />
       <p class="mt-8">
         Visit{" "}
         <Link
@@ -31,10 +30,33 @@ export default function Home() {
         </Link>{" "}
         to learn how to build Solid apps.
       </p>
+      <button
+        class="w-[50px] rounded-full bg-gray-100 border-2 border-gray-300 focus:border-gray-400 active:border-gray-400 px-[1rem] py-[1rem]"
+        onClick={() => setplatform('pc')}>
+        pc
+      </button>
+      <button
+        class="w-[50px] rounded-full bg-gray-100 border-2 border-gray-300 focus:border-gray-400 active:border-gray-400 px-[1rem] py-[1rem]"
+        onClick={() => setplatform('ps4')}>
+        PS4
+      </button>
+      <button
+        class="w-[50px] rounded-full bg-gray-100 border-2 border-gray-300 focus:border-gray-400 active:border-gray-400 px-[1rem] py-[1rem]"
+        onClick={() => setplatform('xb1')}>
+        xb1
+      </button>
+      <button
+        class="w-[50px] rounded-full bg-gray-100 border-2 border-gray-300 focus:border-gray-400 active:border-gray-400 px-[1rem] py-[1rem]"
+        onClick={() => setplatform('swi')}>
+        swi
+      </button>
+      {platform()}
       <span>{data.loading && "Loading..."}</span>
 
-      {JSON.stringify(data())}
-       <p class="my-4">
+      <div>
+         {JSON.stringify(data())}  
+      </div>
+      <p class="my-4">
         <span>Home</span>
         {" - "}
         <Link href="/about" class="text-sky-600 hover:underline">
